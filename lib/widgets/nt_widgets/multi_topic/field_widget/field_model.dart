@@ -58,6 +58,7 @@ class FieldWidgetModel extends MultiTopicNTWidgetModel {
   
   String get eventNameTopic => '/FMSInfo/EventName';
   String get controlDataTopic => '/FMSInfo/FMSControlData';
+  String get gameSpecificMessageTopic => '/FMSInfo/GameSpecificMessage';
   String get matchNumberTopic => '/FMSInfo/MatchNumber';
   String get matchTypeTopic => '/FMSInfo/MatchType';
   String get replayNumberTopic => '/FMSInfo/ReplayNumber';
@@ -65,6 +66,7 @@ class FieldWidgetModel extends MultiTopicNTWidgetModel {
 
   late NT4Subscription eventNameSubscription;
   late NT4Subscription controlDataSubscription;
+  late NT4Subscription gameSpecificMessageSubscription;
   late NT4Subscription matchNumberSubscription;
   late NT4Subscription matchTypeSubscription;
   late NT4Subscription replayNumberSubscription;
@@ -80,6 +82,7 @@ class FieldWidgetModel extends MultiTopicNTWidgetModel {
     specialMarkerTopics.subscription,
     eventNameSubscription,
     controlDataSubscription,
+    gameSpecificMessageSubscription,
     matchNumberSubscription,
     matchTypeSubscription,
     replayNumberSubscription,
@@ -447,6 +450,10 @@ class FieldWidgetModel extends MultiTopicNTWidgetModel {
     );
     controlDataSubscription = ntConnection.subscribe(
       controlDataTopic,
+      super.period,
+    );
+    gameSpecificMessageSubscription = ntConnection.subscribe(
+      gameSpecificMessageTopic,
       super.period,
     );
     matchNumberSubscription = ntConnection.subscribe(

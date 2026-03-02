@@ -108,6 +108,8 @@ class FieldWidget extends NTWidget {
         return 'Unknown';
     }
   }
+  
+  bool emptyString(String string)=> (string.isEmpty || string == ''  || string == ' ');
 
   bool _flagMatches(int word, int flag) => (word & flag) != 0;
 
@@ -129,6 +131,7 @@ class FieldWidget extends NTWidget {
           ];
           String eventName = tryCast(model.eventNameSubscription.value) ?? '';
           int controlData = tryCast(model.controlDataSubscription.value) ?? 32;
+          String gameMessage = tryCast(model.gameSpecificMessageSubscription.value) ?? '';
           bool redAlliance = tryCast(model.allianceTopic.value) ?? true;
           int matchNumber = tryCast(model.matchNumberSubscription.value) ?? 0;
           int matchType = tryCast(model.matchTypeSubscription.value) ?? 0;
@@ -1015,13 +1018,35 @@ class FieldWidget extends NTWidget {
                                 //'X: ${robotX.toStringAsFixed(2)}, Y: ${robotY.toStringAsFixed(2)}, Heading: ${degrees(robotTheta).toStringAsFixed(2)}°',
                                 'X: ${formatDouble(robotX,2,2)}, Y: ${formatDouble(robotY,2,2)}, Heading: ${formatDouble(degrees(robotTheta),2,3)}°',
                                 style:
-                                    Theme.of(
-                                      context,
-                                    ).textTheme.bodySmall?.copyWith(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      
-                                    ),
+                                  Theme.of(
+                                    context,
+                                  ).textTheme.bodySmall?.copyWith(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                  ),
+                              ),                          
+                            ),
+                            if (!emptyString(gameMessage))
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8.0,
+                                vertical: 2.0,
+                              ),
+                              decoration: BoxDecoration(
+                                color: gameMessage == 'R' ? const Color.fromARGB(255, 255, 0, 0).withValues(alpha: 0.5 * 255) : 
+                                        gameMessage == 'B' ? const Color.fromARGB(255, 0, 0, 255).withValues(alpha: 0.5 * 255) : 
+                                        const Color.fromARGB(255, 255, 125, 0).withValues(alpha: 0.5 * 255),
+                                borderRadius: BorderRadius.circular(4.0),
+                              ),                     
+                              child: Text(
+                                gameMessage,
+                                style:
+                                  Theme.of(
+                                    context,
+                                  ).textTheme.bodySmall?.copyWith(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                  ),
                               ),                          
                             ),
                           ],

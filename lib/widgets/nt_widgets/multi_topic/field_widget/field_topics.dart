@@ -38,6 +38,26 @@ class SubscribedTopic<T extends Object?> {
   }
 }
 
+class FMSTopics{
+  final NTConnection ntConnection;
+  final double period;
+  late final SubscribedTopic<List<dynamic>> data;
+
+  late final List<SubscribedTopic> topics;
+
+  FMSTopics({required this.ntConnection, this.period = 0.1}) {
+    data = SubscribedTopic(
+      ntConnection: ntConnection,
+      topic: '/FMSInfo',
+      defaultValue: const ['',0,'',true,null,],//EventName,FMSControlData,GameSpecificMessage,IsRedAlliance,MatchNumber,MatchType,ReplayNumber,StationNumber
+    );
+    
+    topics = [
+      data
+    ];
+  }
+}
+
 // Manages all vision-related NT topics.
 class VisionTopics {
   final NTConnection ntConnection;
