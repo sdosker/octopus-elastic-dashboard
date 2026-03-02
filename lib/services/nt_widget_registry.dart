@@ -90,7 +90,7 @@ class NTWidgetRegistry {
   static final Map<String, double> _defaultWidthMap = {};
   static final Map<String, double> _defaultHeightMap = {};
 
-  static const double _normalSize = 128.0;
+  static const double _normalSize = 128.0/2;
 
   NTWidgetRegistry._();
 
@@ -130,7 +130,7 @@ class NTWidgetRegistry {
       model: NumberBarModel.new,
       widget: NumberBar.new,
       fromJson: NumberBarModel.fromJson,
-      minHeight: _normalSize,
+      minHeight: _normalSize*2,
     );
 
     registerSingleTopic(
@@ -221,8 +221,8 @@ class NTWidgetRegistry {
       model: CommandModel.new,
       widget: CommandWidget.new,
       fromJson: CommandModel.fromJson,
-      minWidth: _normalSize * 2,
-      minHeight: _normalSize * 0.90,
+      minWidth: _normalSize * 4,
+      minHeight: _normalSize * 1.5, //0.9
       defaultWidth: 2,
     );
 

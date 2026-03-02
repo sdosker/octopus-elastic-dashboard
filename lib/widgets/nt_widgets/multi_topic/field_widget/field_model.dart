@@ -55,6 +55,20 @@ class FieldWidgetModel extends MultiTopicNTWidgetModel {
   late final CommanderTopics commanderTopics;
   late final SpecialMarkerTopics specialMarkerTopics;
 
+  
+  String get eventNameTopic => '/FMSInfo/EventName';
+  String get controlDataTopic => '/FMSInfo/FMSControlData';
+  String get matchNumberTopic => '/FMSInfo/MatchNumber';
+  String get matchTypeTopic => '/FMSInfo/MatchType';
+  String get replayNumberTopic => '/FMSInfo/ReplayNumber';
+  String get stationNumberTopic => '/FMSInfo/StationNumber';
+
+  late NT4Subscription eventNameSubscription;
+  late NT4Subscription controlDataSubscription;
+  late NT4Subscription matchNumberSubscription;
+  late NT4Subscription matchTypeSubscription;
+  late NT4Subscription replayNumberSubscription;
+
   @override
   List<NT4Subscription> get subscriptions => [
     robotSubscription,
@@ -64,6 +78,11 @@ class FieldWidgetModel extends MultiTopicNTWidgetModel {
     ...gamePieceTopics.listenables.whereType<NT4Subscription>(),
     ...allianceTopic.listenables.whereType<NT4Subscription>(),
     specialMarkerTopics.subscription,
+    eventNameSubscription,
+    controlDataSubscription,
+    matchNumberSubscription,
+    matchTypeSubscription,
+    replayNumberSubscription,
   ];
 
   bool rendered = false;
@@ -109,6 +128,9 @@ class FieldWidgetModel extends MultiTopicNTWidgetModel {
     _loadImage();
     refresh();
   }
+
+
+  // const FMSInfo({super.key}) : super();
 
   double get robotWidthMeters => _robotWidthMeters;
 
@@ -413,28 +435,38 @@ class FieldWidgetModel extends MultiTopicNTWidgetModel {
   void initializeSubscriptions() {
     otherObjectSubscriptions.clear();
 
-    // robotXSubscription = ntConnection.subscribe(
-    //   '${robotTopicName}X',
-    //   super.period,
-    // );
-    // robotYSubscription = ntConnection.subscribe(
-    //   '${robotTopicName}Y',
-    //   super.period,
-    // );
-    // robotHeadingSubscription = ntConnection.subscribe(
-    //   '${robotTopicName}Heading',
-    //   super.period,
-    // );
-
     robotSubscription = ntConnection.subscribe(
       robotTopicName,
       super.period
+    );
+
+    
+    eventNameSubscription = ntConnection.subscribe(
+      eventNameTopic,
+      super.period,
+    );
+    controlDataSubscription = ntConnection.subscribe(
+      controlDataTopic,
+      super.period,
+    );
+    matchNumberSubscription = ntConnection.subscribe(
+      matchNumberTopic,
+      super.period,
+    );
+    matchTypeSubscription = ntConnection.subscribe(
+      matchTypeTopic,
+      super.period,
+    );
+    replayNumberSubscription = ntConnection.subscribe(
+      replayNumberTopic,
+      super.period,
     );
 
     visionTopics.initialize();
     gamePieceTopics.initialize();
     allianceTopic.initialize();
     specialMarkerTopics.initialize();
+    
   }
 
   @override

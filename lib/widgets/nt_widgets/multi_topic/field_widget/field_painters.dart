@@ -115,6 +115,41 @@ class RobotPainter extends CustomPainter {
       oldDelegate.scale != scale;
 }
 
+class AlliancePainter extends CustomPainter {
+  final Offset center;
+  final Field field;
+  final Color color;
+  final double height;
+  final double width;
+
+  AlliancePainter({
+    required this.center,
+    required this.field,
+    required this.color,
+    required this.height,
+    required this.width,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5;
+    final Offset markerCenter = Offset(center.dx,center.dy);
+    final Rect rect = Rect.fromCenter(
+      center: markerCenter,
+      height: height,
+      width: width,
+    );
+    canvas.drawRect(rect, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant AlliancePainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
 class VisionPainter extends CustomPainter {
   final Offset center;
   final Field field;
@@ -157,7 +192,7 @@ class VisionPainter extends CustomPainter {
 
        TextPainter textPainter = TextPainter(
         text: TextSpan(
-          text: 'ID${statuses[0].isEmpty ? '?' : (statuses[0][i] as num?)?.toInt()}\n${statuses[1].isEmpty ? '?' : statuses[1][i].toString().substring(0,4)}',
+          text: 'ID${statuses[0].isEmpty ? '?' : (statuses[0][i] as num?)?.toInt()}\n${statuses[1].isEmpty ? '?' : statuses[1][i].toStringAsFixed(2)}',
           style: TextStyle(
             color: Colors.white,
             fontSize: 8,

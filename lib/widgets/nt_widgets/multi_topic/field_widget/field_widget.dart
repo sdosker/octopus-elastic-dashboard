@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:elastic_dashboard/services/log.dart';
 import 'package:flutter/material.dart';
 
 // import 'package:elastic_dashboard/services/log.dart';
@@ -10,6 +9,8 @@ import 'package:dot_cast/dot_cast.dart';
 import 'package:provider/provider.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3, degrees, radians;
 
+
+import 'package:patterns_canvas/patterns_canvas.dart';
 import 'package:elastic_dashboard/services/nt4_client.dart';
 import 'package:elastic_dashboard/services/struct_schemas/pose2d_struct.dart';
 import 'package:elastic_dashboard/util/test_utils.dart';
@@ -25,6 +26,36 @@ extension _SizeUtils on Size {
     (width * cos(angle) - height * sin(angle)).abs(),
     (height * cos(angle) + width * sin(angle)).abs(),
   );
+}
+
+String formatDouble(double value, int fractionDigits, int decimalDigits){
+  int add = 0;
+  double fakeval = value;
+  bool negative = false;
+  if (value < 0)//negative value
+  {
+    if (fakeval > -1) fakeval -= 1;
+    negative = true;
+    while (fakeval > -pow(10, decimalDigits-1)){
+      fakeval *= 10;
+      add++;
+    }
+  }
+  else if (value > 0)//positive value
+  {
+    if (fakeval < 1) fakeval += 1;
+    while (fakeval < pow(10, decimalDigits-1)){
+      fakeval *= 10;
+      add++;
+    }
+  }
+  String output = value.abs().toStringAsFixed(fractionDigits);
+  while (add > 0){
+    output = '0$output';
+    add--;
+  }
+  output = negative ? '-$output' : ' $output';
+  return output;
 }
 
 Offset pose = Offset.zero;
@@ -56,7 +87,29 @@ class FieldWidget extends NTWidget {
         scaleReduction;
 
     return Offset(xFromCenter, yFromCenter);
+  }  
+  
+  static const int ENABLED_FLAG = 0x01;
+  static const int AUTO_FLAG = 0x02;
+  static const int TEST_FLAG = 0x04;
+  static const int EMERGENCY_STOP_FLAG = 0x08;
+  static const int FMS_ATTACHED_FLAG = 0x10;
+  static const int DS_ATTACHED_FLAG = 0x20;
+
+  String _getMatchTypeString(int matchType) {
+    switch (matchType) {
+      case 1:
+        return 'Practice';
+      case 2:
+        return 'Qualification';
+      case 3:
+        return 'Elimination';
+      default:
+        return 'Unknown';
+    }
   }
+
+  bool _flagMatches(int word, int flag) => (word & flag) != 0;
 
   @override
   Widget build(BuildContext context) {
@@ -74,6 +127,186 @@ class FieldWidget extends NTWidget {
             // model.robotHeadingSubscription.value,
             model.robotSubscription.value
           ];
+          String eventName = tryCast(model.eventNameSubscription.value) ?? '';
+          int controlData = tryCast(model.controlDataSubscription.value) ?? 32;
+          bool redAlliance = tryCast(model.allianceTopic.value) ?? true;
+          int matchNumber = tryCast(model.matchNumberSubscription.value) ?? 0;
+          int matchType = tryCast(model.matchTypeSubscription.value) ?? 0;
+          int replayNumber = tryCast(model.replayNumberSubscription.value) ?? 0;
+
+          String eventNameDisplay = '$eventName${(eventName != '') ? ' ' : ''}';
+          String matchTypeString = _getMatchTypeString(matchType);
+          String replayNumberDisplay = (replayNumber != 0)
+              ? ' (replay $replayNumber)'
+              : '';
+
+          bool fmsConnected = _flagMatches(controlData, FMS_ATTACHED_FLAG);
+          bool dsAttached = _flagMatches(controlData, DS_ATTACHED_FLAG);
+
+          bool emergencyStopped = _flagMatches(controlData, EMERGENCY_STOP_FLAG);
+
+          Color robotcontrolstateColor = Color.fromARGB(255, 255, 0, 0);
+          String robotControlState = 'Disabled';
+          if (_flagMatches(controlData, ENABLED_FLAG)) {
+            if (_flagMatches(controlData, TEST_FLAG)) {
+              robotcontrolstateColor = Color.fromARGB(255, 0, 100, 0);
+              robotControlState = 'Test';
+            } else if (_flagMatches(controlData, AUTO_FLAG)) {
+              robotcontrolstateColor = Color.fromARGB(255, 100, 100, 0);
+              robotControlState = 'Autonomous';
+            } else {
+              robotcontrolstateColor = Color.fromARGB(255, 0, 100, 100);
+              robotControlState = 'Teleoperated';
+            }
+          }
+
+
+          String matchDisplayString =
+              '$eventNameDisplay$matchTypeString match $matchNumber$replayNumberDisplay';
+          Widget matchDisplayWidget = 
+          // Row(
+          // //mainAxisSize: MainAxisSize.min,
+          // children: [
+            Container(
+              // alignment: Alignment.center,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8.0,
+                    vertical: 2.0,
+                  ),
+                  decoration: BoxDecoration(
+                    color: (!redAlliance)
+                        ? Colors.red.shade900
+                        : Colors.blue.shade900,
+                    borderRadius: BorderRadius.circular(5.0),
+                  ),
+                  child: Text(
+                    matchDisplayString,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                // ),
+            // ],
+          );
+
+          String fmsDisplayString = (fmsConnected)
+              ? 'FMS ☑'
+              : 'FMS ☐';
+          String dsDisplayString = (dsAttached)
+              ? 'DS   ☑'
+              : 'DS   ☐';
+
+          Icon fmsDisplayIcon = (fmsConnected)
+              ? const Icon(Icons.check, color: Colors.green, size: 18)
+              : const Icon(Icons.clear, color: Colors.red, size: 18);
+          Icon dsDisplayIcon = (dsAttached)
+              ? const Icon(Icons.check, color: Colors.green, size: 18)
+              : const Icon(Icons.clear, color: Colors.red, size: 18);
+
+
+          late Widget robotStateWidget;
+          if (emergencyStopped) {
+            robotStateWidget = Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Expanded(
+                  flex: 25,
+                  child: CustomPaint(
+                    size: const Size(80, 15),
+                    painter: _BlackAndYellowStripes(),
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8.0,
+                    vertical: 2.0,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color.fromARGB(255, 0, 0, 0),
+                    borderRadius: BorderRadius.circular(4.0),
+                  ),
+                  child: Text(
+                    'EMERGENCY STOPPED',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                Expanded(
+                  flex: 25,
+                  child: CustomPaint(
+                    size: const Size(80, 15),
+                    painter: _BlackAndYellowStripes(),
+                  ),
+                ),
+              ],
+            );
+          } else {
+            robotStateWidget = Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8.0,
+                                vertical: 2.0,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color.fromARGB(255, 107, 3, 93),
+                                borderRadius: BorderRadius.circular(4.0),
+                              ),
+                              child: Row(
+                                children: [                            
+                                  Text('Robot State: '),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8.0,
+                                      vertical: 2.0,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: robotcontrolstateColor,//const Color.fromARGB(255, 3, 107, 76),
+                                      borderRadius: BorderRadius.circular(4.0),
+                                    ),
+                                    child: Text(robotControlState),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],                           
+                        );
+          }
+
+          // return Column(
+          //   children: [
+          //     matchDisplayWidget,
+          //     const Spacer(flex: 2),
+          //     // DS and FMS connected
+          //     Row(
+          //       children: [
+          //         const Spacer(),
+          //         Row(
+          //           children: [
+          //             fmsDisplayIcon,
+          //             const SizedBox(width: 5),
+          //             Text(fmsDisplayString),
+          //           ],
+          //         ),
+          //         const Spacer(),
+          //         Row(
+          //           children: [
+          //             dsDisplayIcon,
+          //             const SizedBox(width: 5),
+          //             Text(dsDisplayString),
+          //           ],
+          //         ),
+          //         const Spacer(),
+          //       ],
+          //     ),
+          //     const Spacer(),
+          //     // Robot State
+          //     robotStateWidget,
+          //   ],
+          // );
 
           double robotX = 0;
           double robotY = 0;
@@ -495,6 +728,16 @@ class FieldWidget extends NTWidget {
                                     scale: scale,
                                   ),
                                 ),
+                                CustomPaint(//aliance paint
+                                  size: imageDisplaySize,
+                                  painter: AlliancePainter(
+                                    center: imageDisplaySize.toOffset / 2,
+                                    field: model.field,
+                                    color: model.allianceTopic.value ? Color.fromARGB(255, 0, 0, 255) : Color.fromARGB(255, 255, 0, 0),                           
+                                    width: imageDisplaySize.width,
+                                    height: imageDisplaySize.height,
+                                  ),
+                                ),
                                 if (model.showTrajectories)
                                   for (List<Offset> points in trajectoryPoints)
                                     CustomPaint(
@@ -525,8 +768,7 @@ class FieldWidget extends NTWidget {
                                       scale: scale,
                                     ),
                                   ),
-                                if (model.showVisionTargets)
-                                  
+                                if (model.showVisionTargets)                                  
                                   CustomPaint(                                    
                                     size: imageDisplaySize,
                                     painter: VisionPainter(
@@ -702,6 +944,42 @@ class FieldWidget extends NTWidget {
                                       scale: scale,
                                     ),
                                   ),
+                                SizedBox(
+                                  width: imageDisplaySize.width*0.95,
+                                  height: imageDisplaySize.height*0.95,
+                                  // child: Positioned(
+                                  //   top: 0,
+                                  //   left: 0,
+                                  //   right: 0,
+                                    // child: ClipRect(
+                                      child: Center(
+                                        child: Column(
+                                          children: [
+                                            const Spacer(flex: 1),
+                                            //matchDisplayWidget,
+                                            Row(
+                                              children: [
+                                                fmsDisplayIcon,
+                                                const SizedBox(width: 5),
+                                                Text(fmsDisplayString),
+                                              ],
+                                            ),                      
+                                            Row(
+                                              children: [
+                                                dsDisplayIcon,
+                                                const SizedBox(width: 5),
+                                                Text(dsDisplayString),
+                                              ],
+                                            ),
+                                          const Spacer(),
+                                          // Robot State
+                                          robotStateWidget,
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  // ),
+                                // ),
                               ],
                             ),
                           ),
@@ -710,72 +988,91 @@ class FieldWidget extends NTWidget {
                     ),
                   ),
                 ),
+                
                 Positioned(
                   top: 2,
                   left: 0,
                   right: 0,
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8.0,
-                        vertical: 2.0,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.5 * 255),
-                        borderRadius: BorderRadius.circular(4.0),
-                      ),
-                      child: Text(
-                        'X: ${robotX.toStringAsFixed(2)}, Y: ${robotY.toStringAsFixed(2)}, Heading: ${degrees(robotTheta).toStringAsFixed(2)}°',
-                        style:
-                            Theme.of(
-                              context,
-                            ).textTheme.bodySmall?.copyWith(
-                              color: Colors.white,
-                              fontSize: 16,
-                              
+                  child: Center(    
+                    child: Column( 
+                      children: [               
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            matchDisplayWidget,
+                            Container(
+                              // alignment: Alignment.center,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8.0,
+                                vertical: 2.0,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.5 * 255),
+                                borderRadius: BorderRadius.circular(4.0),
+                              ),
+                              //child: matchDisplayWidget,                      
+                              child: Text(
+                                //'X: ${robotX.toStringAsFixed(2)}, Y: ${robotY.toStringAsFixed(2)}, Heading: ${degrees(robotTheta).toStringAsFixed(2)}°',
+                                'X: ${formatDouble(robotX,2,2)}, Y: ${formatDouble(robotY,2,2)}, Heading: ${formatDouble(degrees(robotTheta),2,3)}°',
+                                style:
+                                    Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall?.copyWith(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      
+                                    ),
+                              ),                          
                             ),
-                      ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                Positioned(
-                  //for right sided:
-                  // bottom: 10,
-                  // left: size.width-40,
-                  top: size.height-30,
-                  left: 0,
-                  right: 0,                  
-                   child: Center(
-                  //for right sided:
-                    // child: RotatedBox(
-                    // quarterTurns: 3, // rotate -90°
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 4.0,
-                          vertical: 2.0,
+                if (pose.dx > 0.0)
+                  Positioned(
+                    //for right sided:
+                    // bottom: 10,
+                    // left: size.width-40,
+                    top: size.height-30,
+                    left: 0,
+                    right: 0,                  
+                    child: Center(
+                    //for right sided:
+                      // child: RotatedBox(
+                      // quarterTurns: 3, // rotate -90°
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8.0,
+                            vertical: 2.0,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color.fromARGB(255, 122, 79, 14),
+                            borderRadius: BorderRadius.circular(4.0),
+                          ),
+                          child: Text(
+                            'X: ${pose.dx.toStringAsFixed(2)}, Y: ${pose.dy.toStringAsFixed(2)}',
+                            style:
+                                Theme.of(
+                                  context,
+                                ).textTheme.bodySmall?.copyWith(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                ),
+                          ),
                         ),
-                        decoration: BoxDecoration(
-                          color: const Color.fromARGB(255, 122, 79, 14),
-                          borderRadius: BorderRadius.circular(4.0),
-                        ),
-                        child: Text(
-                          'X: ${pose.dx.toStringAsFixed(2)}, Y: ${pose.dy.toStringAsFixed(2)}',
-                          style:
-                              Theme.of(
-                                context,
-                              ).textTheme.bodySmall?.copyWith(
-                                color: Colors.white,
-                                fontSize: 16,
-                              ),
-                        ),
-                      ),
-                    // ),
+                      // ),
+                    ),
                   ),
-                ),
               ],
+              
             ),
+            
           );
+          
         },
+        
       ),
     );
   }
@@ -854,4 +1151,20 @@ class TrajectoryPainter extends CustomPainter {
       oldDelegate.points != points ||
       oldDelegate.strokeWidth != strokeWidth ||
       oldDelegate.color != color;
+}
+
+class _BlackAndYellowStripes extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    Rect rect = Rect.fromLTWH(0, 0, size.width, size.height);
+
+    const DiagonalStripesThick(
+      bgColor: Colors.black,
+      fgColor: Colors.yellow,
+      featuresCount: 10,
+    ).paintOnRect(canvas, size, rect);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
