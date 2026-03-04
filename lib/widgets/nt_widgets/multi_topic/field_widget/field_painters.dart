@@ -155,7 +155,6 @@ class HubPainter extends CustomPainter {
   final Offset pos;
   final Field field;
   final Color color;
-  final double radius;
   final double scale;
 
   HubPainter({
@@ -163,7 +162,6 @@ class HubPainter extends CustomPainter {
     required this.pos,
     required this.field,
     required this.color,
-    required this.radius,
     required this.scale,//test if i can remove this
   });
 
@@ -173,6 +171,11 @@ class HubPainter extends CustomPainter {
       ..color = color
       ..style = PaintingStyle.stroke
       ..strokeWidth = 5;
+      final Paint highlight_paint = Paint()
+      ..color = ui.Color.fromARGB(255, 255, 255, 0)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5;
+      const double radius = 100;
     // final Paint Remover_paint = Paint()
     //   //..color = color
     //   ..blendMode = BlendMode.xor
@@ -190,11 +193,11 @@ class HubPainter extends CustomPainter {
       );
 
         // Rectangle
-        final Rect rect = Rect.fromCenter(
-          center: markerCenter,
-          width: local_radius,
-          height: local_radius,
-        );
+        // final Rect rect = Rect.fromCenter(
+        //   center: markerCenter,
+        //   width: local_radius,
+        //   height: local_radius,
+        // );
         //paint.shader = LinearGradient(colors: [color,Color.from(alpha: 255-color.a, red: 255-color.r, green: 255-color.g, blue: 255-color.b)]).createShader(rect);
         // canvas.drawRect(rect, paint);
 
@@ -203,6 +206,7 @@ class HubPainter extends CustomPainter {
         //   markerCenter + Offset(markerSize / 2 - textPainter.width, - textPainter.height / 2),
         // );
 
+        if (color != ui.Color.fromARGB(255, 0, 0, 0)) canvas.drawCircle(markerCenter, local_radius+5, highlight_paint);
         canvas.drawCircle(markerCenter, local_radius, paint);
         // canvas.drawArc(rect, 0, radians(270), true, paint);
         // paint.color = ui.Color.fromARGB(255, 255, 255, 255);

@@ -16,7 +16,8 @@ import 'package:elastic_dashboard/services/struct_schemas/pose2d_struct.dart';
 import 'package:elastic_dashboard/util/test_utils.dart';
 import 'package:elastic_dashboard/widgets/nt_widgets/multi_topic/field_widget/field_model.dart';
 import 'package:elastic_dashboard/widgets/nt_widgets/multi_topic/field_widget/field_painters.dart';
-// import 'package:elastic_dashboard/widgets/nt_widgets/multi_topic/field_widget/field_widget_model.dart' hide FieldWidgetModel;
+// ignore: unused_import
+import 'package:elastic_dashboard/services/log.dart';
 import 'package:elastic_dashboard/widgets/nt_widgets/nt_widget.dart';
 
 extension _SizeUtils on Size {
@@ -139,8 +140,43 @@ class FieldWidget extends NTWidget {
 
           
           bool hubEnabled = tryCast(model.hubEnabledSubscription.value) ?? false;
-          double shiftTimerNumber = tryCast(model.shiftTimerSubscription.value) ?? 0;
-          bool flashHub=(shiftTimerNumber*10%2)>0.6;
+          double shiftTimerNumber(){
+            double val = tryCast(model.shiftTimerSubscription.value) ?? 0;
+            if (val < 0) val += 150;
+            return val;
+          }
+          double currentShiftNumber = tryCast(model.currentShiftSubscription.value) ?? 0;//tryCast(model.currentShiftSubscription.value) ?? 0;
+          bool bothHubEnabled = (currentShiftNumber<=2 || currentShiftNumber==7);
+          bool flashHub()=> /*((shiftTimerNumber <= 0 ? shiftTimerNumber+150 : shiftTimerNumber)*/(shiftTimerNumber()*10%2)>0.6;
+          bool wontBeDisabled(bool enemy){// true if the next shift doesn't mean a disable of this hub
+            if (currentShiftNumber == 1 || currentShiftNumber == 6) return true;//both will still be enabled next shift
+            bool first = (currentShiftNumber == 2 || currentShiftNumber == 4);
+            bool seccond = (currentShiftNumber == 3 || currentShiftNumber == 5);
+            bool alliance = enemy ? redAlliance : !redAlliance;
+            if (alliance)//red
+            {
+              if (gameMessage == 'B' && first)//Blue will be disabled first, so we stay on shift 1, 3
+              {
+                return true;
+              }
+              else if (gameMessage == 'R' && seccond)//red will be disabled first, so we stay on shift 2, 4]
+              {
+                return true;
+              }
+            }
+            else if (!alliance)//blue
+            {
+              if (gameMessage == 'R' && first)//Red will be disabled first, so we stay on shift 1, 3
+              {
+                return true;
+              }
+              else if (gameMessage == 'B' && seccond)//Blue will be disabled first, so we stay on shift 2, 4]
+              {
+                return true;
+              }
+            }
+            return false;
+          } 
 
           String eventNameDisplay = '$eventName${(eventName != '') ? ' ' : ''}';
           String matchTypeString = _getMatchTypeString(matchType);
@@ -341,6 +377,7 @@ class FieldWidget extends NTWidget {
               //logger.debug('Value: ${model.visionTopics.targetPose} + ${Offset(robotPosition[0],robotPosition[1])} = ${Offset(model.visionTopics.targetPose.dx+robotPosition[0],-model.visionTopics.targetPose.dy+robotPosition[1])}');
 
             }
+            //logger.debug('shift: $currentShiftNumber & timer: ${shiftTimerNumber()} & debug: ${model.currentShiftSubscription.value}');
 
             if (robotPosition.length >= 3) {
               robotX = robotPosition[0];
@@ -736,14 +773,13 @@ class FieldWidget extends NTWidget {
                                     scale: scale,
                                   ),
                                 ),
-                                CustomPaint(//Hub Activation                     
+                                CustomPaint(//Hub Activation     //TODO: also use game specific data                
                                   size: imageDisplaySize,
                                   painter: HubPainter(
                                     center: imageDisplaySize.toOffset / 2, 
                                     pos: (model.allianceTopic.value) ? Offset(4.62,4.04) : Offset(11.89,4.04), 
                                     field: model.field, 
-                                    color: hubEnabled ? ((shiftTimerNumber > 5) ? (model.allianceTopic.value ? Color.fromARGB(255, 0, 0, 255) : Color.fromARGB(255, 255, 0, 0)) : Color.fromARGB(255, flashHub?255:0, flashHub?255:0, flashHub?255:0)) : Color.fromARGB(255, 0, 0, 0),  
-                                    radius: 100,
+                                    color: (bothHubEnabled || hubEnabled) ? ((shiftTimerNumber() > 8  || flashHub() || wontBeDisabled(false)) ? (model.allianceTopic.value ? Color.fromARGB(255, 0, 0, 255) : Color.fromARGB(255, 255, 0, 0)) : Color.fromARGB(255, 0, 0, 0)) : Color.fromARGB(255, 0, 0, 0),  
                                     scale: scale
                                   ),
                                 ),
@@ -753,8 +789,7 @@ class FieldWidget extends NTWidget {
                                     center: imageDisplaySize.toOffset / 2, 
                                     pos: (!model.allianceTopic.value) ? Offset(4.62,4.04) : Offset(11.89,4.04), 
                                     field: model.field, 
-                                    color: !hubEnabled ? ((shiftTimerNumber > 5) ? (!model.allianceTopic.value ? Color.fromARGB(255, 0, 0, 255) : Color.fromARGB(255, 255, 0, 0)) : Color.fromARGB(255, flashHub?255:0, flashHub?255:0, flashHub?255:0)) : (Color.fromARGB(255, 0, 0, 0)),  
-                                    radius: 100,
+                                    color: (bothHubEnabled || !hubEnabled) ? ((shiftTimerNumber() > 8 || flashHub() || wontBeDisabled(true)) ? (!model.allianceTopic.value ? Color.fromARGB(255, 0, 0, 255) : Color.fromARGB(255, 255, 0, 0)) : Color.fromARGB(255, 0, 0, 0)) : (Color.fromARGB(255, 0, 0, 0)),  
                                     scale: scale
                                   ),
                                 ),
