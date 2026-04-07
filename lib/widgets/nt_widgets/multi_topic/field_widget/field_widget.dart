@@ -922,25 +922,6 @@ class FieldWidget extends NTWidget {
                                       center: imageDisplaySize.toOffset / 2,
                                       field: model.field,
                                       poses: [
-                                        // compute target offset in world frame from robot pose + target offsets (horizontal, vertical)
-                                        // final tv = model.visionTopics.targetVal;
-                                        // double tx = robotX;
-                                        // double ty = robotY;
-                                        // if (tv.length >= 2) {
-                                        //   final double h = tv[0]; // horizontal offset (meters)
-                                        //   final double v = tv[1]; // vertical offset / distance (meters)
-                                        //   final double dx = cos(robotTheta) * h - sin(robotTheta) * v;
-                                        //   final double dy = sin(robotTheta) * h + cos(robotTheta) * v;
-                                        //   tx += dx;
-                                        //   ty += dy;
-                                        // }
-
-                                        //working, processed by the limelight
-                                        // Offset(robotX+((cos(robotTheta-pi/2) * model.visionTopics.targetPose.dx) - (sin(robotTheta-pi/2) * model.visionTopics.targetPose.dy)),
-                                        //       robotY+((sin(robotTheta-pi/2) * model.visionTopics.targetPose.dx) + (cos(robotTheta-pi/2) * model.visionTopics.targetPose.dy))),
-
-                                        //dynnamicaly add a offset here based on size of model.visionTopics.allTags.value
-                                        //raw values, must me processed here.
                                         for (
                                           int i = 0;
                                           i <
@@ -1152,17 +1133,6 @@ class FieldWidget extends NTWidget {
                                       markerSize: model.visionMarkerSize,
                                       scale: scale,
                                     ),
-                                    //#TODO: put apriltag ID and position.
-                                    // child: Text(
-                                    //   'ID: ${model.visionTopics.allTags.value.isEmpty ? '?' : model.visionTopics.allTags.value[0] ?? '?'}',
-                                    //   style:
-                                    //     Theme.of(
-                                    //       context,
-                                    //     ).textTheme.bodySmall?.copyWith(
-                                    //       color: Colors.white,
-                                    //       fontSize: 8,
-                                    //     ),
-                                    // ),
                                   ),
                                 if (model.showOtherObjects)
                                   CustomPaint(

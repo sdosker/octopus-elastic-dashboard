@@ -233,7 +233,8 @@ class MultiBooleanBox extends NTWidget {
       valueListenable: model.subscription!,
       builder: (context, data, child) {
       final List<bool> values = [];
-
+      bool safeToStart = true;
+      bool couldToStart = true;
       if (data is Iterable) {
         for (final item in data) {
         values.add(tryCast(item) ?? false);
@@ -241,12 +242,21 @@ class MultiBooleanBox extends NTWidget {
       } else {
         values.add(tryCast(data) ?? false);
       }
+      safeToStart = values.every((value) => value);
+      couldToStart = values.any((value) => value);
+
+
+      final Color backgroundColor =
+        safeToStart ? model.trueColor : (couldToStart ? Colors.yellow : model.falseColor);
 
       Widget buildCell(bool value) {
+        final Color cellColor = value ? model.trueColor : model.falseColor;
+
         Widget defaultWidget() => Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(15.0),
-            color: value ? model.trueColor : model.falseColor,
+            color: cellColor,
+            border: Border.all(color: Colors.black, width: 1.0),
           ),
           );
 
@@ -254,9 +264,16 @@ class MultiBooleanBox extends NTWidget {
         if (value && model.trueIcon.toUpperCase() != 'NONE') {
         switch (model.trueIcon.toUpperCase()) {
           case 'CHECKMARK':
-          widgetToDisplay = SizedBox.expand(
+          widgetToDisplay = Container(
+            decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15.0),
+            color: cellColor,
+            border: Border.all(color: Colors.black, width: 1.0),
+            ),
+            child: SizedBox.expand(
             child: FittedBox(
-            child: Icon(Icons.check, color: model.trueColor),
+              child: Icon(Icons.check, color: model.trueColor),
+            ),
             ),
           );
           break;
@@ -264,16 +281,31 @@ class MultiBooleanBox extends NTWidget {
         } else if (!value && model.falseIcon.toUpperCase() != 'NONE') {
         switch (model.falseIcon.toUpperCase()) {
           case 'X':
-          widgetToDisplay = SizedBox.expand(
+          widgetToDisplay = Container(
+            decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15.0),
+            color: cellColor,
+            border: Border.all(color: Colors.black, width: 1.0),
+            ),
+            child: SizedBox.expand(
             child: FittedBox(
-            child: Icon(Icons.clear, color: model.falseColor),
+              child: Icon(Icons.clear, color: model.falseColor),
+            ),
             ),
           );
           break;
           case 'EXCLAMATION POINT':
-          widgetToDisplay = SizedBox.expand(
-            child: FittedBox(
-            child: Icon(Icons.priority_high, color: model.falseColor),
+          widgetToDisplay = Container(
+            decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15.0),
+            color: cellColor,
+            border: Border.all(color: Colors.black, width: 1.0),
+            ),
+            child: SizedBox.expand(
+            child:
+              FittedBox(
+                child: Icon(Icons.priority_high, color: model.falseColor),
+              ),
             ),
           );
           break;
@@ -283,41 +315,43 @@ class MultiBooleanBox extends NTWidget {
         return widgetToDisplay ?? defaultWidget();
       }
 
-      return LayoutBuilder(
+      return Container(
+        // color: backgroundColor,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15.0),
+          color: backgroundColor,
+          border: Border.all(color: Colors.black, width: 1.0),
+        ),
+        child: LayoutBuilder(
         builder: (context, constraints) {
-        double cellSize = 24.0;
+          double cellSize = 24.0;
 
-        if (constraints.maxWidth.isFinite && values.isNotEmpty) {
+          if (constraints.maxWidth.isFinite && values.isNotEmpty) {
           cellSize = (constraints.maxWidth - (values.length - 1) * 8) /
             values.length;
-        }
+          }
 
-        // if (constraints.maxHeight.isFinite) {
-        //   cellSize = cellSize.clamp(12.0, constraints.maxHeight) as double;
-        // }
+          if (constraints.maxHeight.isFinite) {
+            cellSize = cellSize.clamp(constraints.maxHeight > 12 ? constraints.maxHeight : 12.0, constraints.maxHeight);
+          }
 
-        // cellSize = cellSize.clamp(12.0, 48.0) as double;
+          cellSize = cellSize.clamp(12.0, 48.0);
 
-        if (constraints.maxHeight.isFinite) {
-          cellSize = cellSize.clamp(12.0, constraints.maxHeight);
-        }
-
-        cellSize = cellSize.clamp(12.0, 48.0);
-
-        return Wrap(
+          return Wrap(
           spacing: 8,
           runSpacing: 8,
           children: values
             .map(
-            (value) => SizedBox(
+              (value) => SizedBox(
               width: cellSize,
               height: cellSize,
               child: buildCell(value),
-            ),
+              ),
             )
             .toList(),
-        );
+          );
         },
+        ),
       );
       },
     );
