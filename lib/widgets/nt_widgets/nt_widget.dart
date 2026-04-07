@@ -9,6 +9,7 @@ import 'package:elastic_dashboard/services/nt_connection.dart';
 import 'package:elastic_dashboard/services/settings.dart';
 import 'package:elastic_dashboard/widgets/nt_widgets/multi_topic/combo_box_chooser.dart';
 import 'package:elastic_dashboard/widgets/nt_widgets/multi_topic/split_button_chooser.dart';
+import 'package:elastic_dashboard/widgets/nt_widgets/single_topic/Multi_boolean_box.dart';
 import 'package:elastic_dashboard/widgets/nt_widgets/single_topic/boolean_box.dart';
 import 'package:elastic_dashboard/widgets/nt_widgets/single_topic/graph.dart';
 import 'package:elastic_dashboard/widgets/nt_widgets/single_topic/large_text_display.dart';
@@ -185,6 +186,7 @@ class SingleTopicNTWidgetModel extends NTWidgetModel {
 
     if (ntDataType == NT4DataType.boolean) {
       availableTypes.addAll([
+        MultiBooleanBox.widgetType,
         BooleanBox.widgetType,
         ToggleSwitch.widgetType,
         ToggleButton.widgetType,

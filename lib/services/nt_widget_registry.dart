@@ -35,6 +35,7 @@ import 'package:elastic_dashboard/widgets/nt_widgets/multi_topic/three_axis_acce
 import 'package:elastic_dashboard/widgets/nt_widgets/multi_topic/ultrasonic.dart';
 import 'package:elastic_dashboard/widgets/nt_widgets/multi_topic/yagsl_swerve_drive.dart';
 import 'package:elastic_dashboard/widgets/nt_widgets/nt_widget.dart';
+import 'package:elastic_dashboard/widgets/nt_widgets/single_topic/Multi_boolean_box.dart';
 import 'package:elastic_dashboard/widgets/nt_widgets/single_topic/boolean_box.dart';
 import 'package:elastic_dashboard/widgets/nt_widgets/single_topic/graph.dart';
 import 'package:elastic_dashboard/widgets/nt_widgets/single_topic/large_text_display.dart';
@@ -108,6 +109,13 @@ class NTWidgetRegistry {
       model: BooleanBoxModel.new,
       widget: BooleanBox.new,
       fromJson: BooleanBoxModel.fromJson,
+    );
+
+    registerSingleTopic(
+      name: MultiBooleanBox.widgetType,
+      model: MultiBooleanBoxModel.new,
+      widget: MultiBooleanBox.new,
+      fromJson: MultiBooleanBoxModel.fromJson,
     );
 
     registerSingleTopic(

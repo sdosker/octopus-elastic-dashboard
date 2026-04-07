@@ -14,6 +14,7 @@ import 'package:elastic_dashboard/widgets/network_tree/networktables_tree.dart';
 import 'package:elastic_dashboard/widgets/nt_widgets/multi_topic/camera_stream.dart';
 import 'package:elastic_dashboard/widgets/nt_widgets/multi_topic/yagsl_swerve_drive.dart';
 import 'package:elastic_dashboard/widgets/nt_widgets/nt_widget.dart';
+import 'package:elastic_dashboard/widgets/nt_widgets/single_topic/Multi_boolean_box.dart';
 import 'package:elastic_dashboard/widgets/nt_widgets/single_topic/boolean_box.dart';
 import 'package:elastic_dashboard/widgets/nt_widgets/single_topic/text_display.dart';
 
@@ -129,6 +130,15 @@ class NetworkTableTreeRow {
     if (entryType.dataType == NT4DataType.boolean) {
       // return ToggleSwitchModel(
       return BooleanBoxModel(
+        ntConnection: ntConnection,
+        preferences: preferences,
+        topic: entry.topic.name,
+        dataType: entryType,
+        ntStructMeta: entry.meta,
+      );
+    } else if (entryType.dataType == NT4DataType.values.first.isBinary) {
+      // return ToggleSwitchModel(
+      return MultiBooleanBoxModel(
         ntConnection: ntConnection,
         preferences: preferences,
         topic: entry.topic.name,
