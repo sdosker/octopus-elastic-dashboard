@@ -1118,45 +1118,55 @@ class FieldWidget extends NTWidget {
                                                           .value[0]
                                                       as String
                                                 : '{}';
-                                            jsonData =
-                                                jsonDecode(jsonString) ?? {};
-                                            if (jsonData == {} ||
-                                                jsonData['Fiducial'] == null) {
-                                              // logger.error('Invalid JSON data for vision target: ${model.visionTopics.allTagsjson.value}');
+                                            try {
+                                              jsonData = jsonDecode(jsonString) ?? {};
+                                            } catch (_) {
+                                              jsonData = {};
+                                            }
+
+                                            final dynamic fiducials = jsonData['Fiducial'];
+                                            if (fiducials is! List ||
+                                                i < 0 ||
+                                                i >= fiducials.length) {
                                               return Offset(robotX, robotY);
                                             }
-                                            List<double> data =
-                                                jsonData['Fiducial'][i]['t6t_rs']
-                                                    .cast<double>() ??
-                                                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-                                            //t6t_rs means Target Pose in robot space as computed by this fiducial (x,y,z,pitch,yaw,roll) (meters, degrees)
-                                            //Robot Space
-                                            // 3d Cartesian Coordinate System with (0,0,0) located at the center of the robot’s frame projected down to the floor.
-                                            // X+ → Pointing forward (Forward Vector)
-                                            // Y+ → Pointing toward the robot’s right (Right Vector)
-                                            // Z+ → Pointing upward (Up Vector)
 
-                                            double jsonX =
-                                                -data[1]; // Negate data[1] to make forward positive
-                                            double jsonY =
-                                                -data[0]; // Keep data[0] negated for left/right
+                                            final dynamic t6tRs = fiducials[i]['t6t_rs'];
+                                            if (t6tRs is! List || t6tRs.length < 3) {
+                                              return Offset(robotX, robotY);
+                                            }
 
+                                            final List<double> data = t6tRs
+                                                .whereType<num>()
+                                                .map((n) => n.toDouble())
+                                                .toList();
+                                            if (data.length < 3) {
+                                              return Offset(robotX, robotY);
+                                            }
+
+                                            double jsonX = -data[1];
+                                            double jsonY = -data[0];
+
+                                            final int targetIndex = i * 7 + 4;
+                                            if (targetIndex >=
+                                                model.visionTopics.allTags.value.length) {
+                                              return Offset(robotX, robotY);
+                                            }
                                             double cameraDistance =
                                                 model
                                                         .visionTopics
                                                         .allTags
-                                                        .value[i * 7 + 4]
+                                                        .value[targetIndex]
                                                     as double;
 
-                                            // Scale the JSON coordinates to match camera distance while preserving direction
                                             double jsonMagnitude2D = sqrt(
                                               jsonX * jsonX + jsonY * jsonY,
                                             );
                                             double scaleFactor =
                                                 jsonMagnitude2D > 0
-                                                ? cameraDistance /
-                                                      jsonMagnitude2D
-                                                : 1.0;
+                                                    ? cameraDistance /
+                                                        jsonMagnitude2D
+                                                    : 1.0;
                                             double correctedJsonX =
                                                 jsonX * scaleFactor;
                                             double correctedJsonY =
