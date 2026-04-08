@@ -306,39 +306,6 @@ class VisionPainter extends CustomPainter {
         textDirection: TextDirection.ltr,
         textAlign: TextAlign.center,
       )..layout();
-
-      //#TODO: put apriltag ID and position.
-      // child: Text(
-      //   'ID: ${model.visionTopics.All_tags.value.isEmpty ? '?' : model.visionTopics.All_tags.value[0] ?? '?'}',
-      //   style:
-      //     Theme.of(
-      //       context,
-      //     ).textTheme.bodySmall?.copyWith(
-      //       color: Colors.white,
-      //       fontSize: 8,
-      //     ),
-      // ),
-
-      // if (locationAligned) {
-      //   if (headingAligned) {
-      //     // Triangle
-      //     final Path trianglePath = Path()
-      //       ..moveTo(markerCenter.dx, markerCenter.dy - markerSize / 2)
-      //       ..lineTo(
-      //         markerCenter.dx + markerSize / 2,
-      //         markerCenter.dy + markerSize / 2,
-      //       )
-      //       ..lineTo(
-      //         markerCenter.dx - markerSize / 2,
-      //         markerCenter.dy + markerSize / 2,
-      //       )
-      //       ..close();
-      //     canvas.drawPath(trianglePath, paint);
-      //   } else {
-      //     // Circle
-      //     canvas.drawCircle(markerCenter, markerSize / 2, paint);
-      //   }
-      // } else {
       // Rectangle
       final Rect rect = Rect.fromCenter(
         center: markerCenter,

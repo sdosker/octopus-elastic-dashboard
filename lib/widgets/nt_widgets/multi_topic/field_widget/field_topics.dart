@@ -89,6 +89,7 @@ class VisionTopics {
   //late final SubscribedTopic<List<double>> _target_pose;
   late final SubscribedTopic<List<dynamic>> mainTag; //THIS! THIS WORKS
   late final SubscribedTopic<List<dynamic>> allTags; //THIS! THIS WORKS
+  late final SubscribedTopic<dynamic> allTagsjson; //THIS! THIS WORKS
   late final SubscribedTopic<List<dynamic>> cameraData;
 
   NT4Subscription get subscription => mainTag.subscription;
@@ -124,6 +125,11 @@ class VisionTopics {
         0,
       ], //[id, txnc, tync, ta, distToCamera, distToRobot, ambiguity, id2.....]
     );
+    allTagsjson = SubscribedTopic(
+      ntConnection: ntConnection,
+      topic: '/limelight-one/json',
+      defaultValue: const [''], 
+    );
 
     cameraData = SubscribedTopic(
       ntConnection: ntConnection,
@@ -142,6 +148,7 @@ class VisionTopics {
     topics = [
       mainTag,
       allTags,
+      allTagsjson,
       cameraData,
     ];
   }

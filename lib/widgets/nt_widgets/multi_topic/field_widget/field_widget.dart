@@ -1,9 +1,11 @@
 // ignore_for_file: constant_identifier_names
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:elastic_dashboard/services/log.dart';
 import 'package:flutter/material.dart';
 
 import 'package:dot_cast/dot_cast.dart';
@@ -33,6 +35,13 @@ extension _SizeUtils on Size {
   );
 }
 
+/// Formats a double value into a string with specified fraction and decimal digits, ensuring proper alignment and handling of negative values.
+///
+/// @param value The double value to format.
+///
+/// @param fractionDigits The number of digits to display after the decimal point.
+///
+/// @param decimalDigits The total number of digits to display before the decimal point, including leading zeros if necessary.
 String formatDouble(double value, int fractionDigits, int decimalDigits) {
   int add = 0;
   double fakeval = value;
@@ -947,8 +956,8 @@ class FieldWidget extends NTWidget {
                                           // the robot pose.
                                           () {
                                             // raw values from the packet
-                                            // final double horizPix = model.visionTopics.allTags.value[i * 7 + 2] as double;
-                                            // final double vertPix   = model.visionTopics.allTags.value[i * 7 + 1] as double;
+                                            // final double horizPix = model.visionTopics.allTags.value[i * 7 + 1] as double;
+                                            // final double vertPix   = model.visionTopics.allTags.value[i * 7 + 2] as double;
                                             // final double distCam  = model.visionTopics.allTags.value[i * 7 + 4] as double;
 
                                             // // camera intrinsics
@@ -966,95 +975,87 @@ class FieldWidget extends NTWidget {
                                             // // +z forward, +x right, +y down; magnitude = reported distance.
 
                                             //values are in degrees (txnc & tync)
-                                            final double horizDeg =
-                                                -model
-                                                        .visionTopics
-                                                        .allTags
-                                                        .value[i * 7 + 2]
-                                                    as double;
-                                            final double vertDeg =
-                                                model
-                                                        .visionTopics
-                                                        .allTags
-                                                        .value[i * 7 + 1]
-                                                    as double;
-                                            final double distCam =
-                                                model
-                                                        .visionTopics
-                                                        .allTags
-                                                        .value[i * 7 + 4]
-                                                    as double;
+                                            // final double horizDeg =
+                                            //     -model
+                                            //             .visionTopics
+                                            //             .allTags
+                                            //             .value[i * 7 + 1]
+                                            //         as double;
+                                            // final double vertDeg =
+                                            //     model
+                                            //             .visionTopics
+                                            //             .allTags
+                                            //             .value[i * 7 + 2]
+                                            //         as double;
+                                            // final double distCam =
+                                            //     model
+                                            //             .visionTopics
+                                            //             .allTags
+                                            //             .value[i * 7 + 4]
+                                            //         as double;
 
-                                            // convert offsets to radians
-                                            final double hRad = radians(
-                                              horizDeg,
-                                            );
-                                            final double vRad = radians(
-                                              vertDeg,
-                                            );
+                                            // // convert offsets to radians
+                                            // final double hRad = radians(
+                                            //   horizDeg,
+                                            // );
+                                            // final double vRad = radians(
+                                            //   vertDeg,
+                                            // );
 
-                                            // build a direction vector in the camera coordinate system.
-                                            // +z forward, +x right, +y down; magnitude = reported distance.
                                             // Vector3 camVec = Vector3(
                                             //   distCam * tan(hRad), // x
                                             //   distCam * tan(vRad), // y
-                                            //   distCam,             // z
+                                            //   distCam, // z
                                             // );
 
-                                            Vector3 camVec = Vector3(
-                                              distCam * tan(hRad), // x
-                                              distCam * tan(vRad), // y
-                                              distCam, // z
-                                            );
-
                                             // apply the camera’s extrinsic transform (translation + yaw/pitch/roll)
-                                            final double camYaw = radians(
-                                              model
-                                                      .visionTopics
-                                                      .cameraData
-                                                      .value[3] ??
-                                                  0.0,
-                                            );
-                                            final double camPitch = radians(
-                                              model
-                                                      .visionTopics
-                                                      .cameraData
-                                                      .value[4] ??
-                                                  0.0,
-                                            );
-                                            final double camRoll = radians(
-                                              model
-                                                      .visionTopics
-                                                      .cameraData
-                                                      .value[5] ??
-                                                  0.0,
-                                            );
-                                            Matrix4 camTransform =
-                                                Matrix4.identity()
-                                                  ..translateByVector3(
-                                                    Vector3(
-                                                      model
-                                                              .visionTopics
-                                                              .cameraData
-                                                              .value[0] ??
-                                                          0.0,
-                                                      -model
-                                                              .visionTopics
-                                                              .cameraData
-                                                              .value[1] ??
-                                                          0.0,
-                                                      model
-                                                              .visionTopics
-                                                              .cameraData
-                                                              .value[2] ??
-                                                          0.0,
-                                                    ),
-                                                  )
-                                                  ..rotateZ(camYaw)
-                                                  ..rotateX(camPitch)
-                                                  ..rotateY(camRoll);
-                                            Vector3 worldCam = camTransform
-                                                .transform3(camVec);
+                                            // final double camYaw = radians(
+                                            //   model
+                                            //           .visionTopics
+                                            //           .cameraData
+                                            //           .value[3] ??
+                                            //       0.0,
+                                            // );
+                                            // final double camPitch = radians(
+                                            //   model
+                                            //           .visionTopics
+                                            //           .cameraData
+                                            //           .value[4] ??
+                                            //       0.0,
+                                            // );
+                                            // final double camRoll = radians(
+                                            //   model
+                                            //           .visionTopics
+                                            //           .cameraData
+                                            //           .value[5] ??
+                                            //       0.0,
+                                            // );
+                                            // Matrix4 camTransform =
+                                            //     Matrix4.identity()
+                                            //       ..translateByVector3(
+                                            //         Vector3(
+                                            //           model
+                                            //                   .visionTopics
+                                            //                   .cameraData
+                                            //                   .value[0] ??
+                                            //               0.0,
+                                            //           model
+                                            //                   .visionTopics
+                                            //                   .cameraData
+                                            //                   .value[1] ??
+                                            //               0.0,
+                                            //           model
+                                            //                   .visionTopics
+                                            //                   .cameraData
+                                            //                   .value[2] ??
+                                            //               0.0,
+                                            //         ),
+                                            //       )
+                                            //       ..rotateZ(camYaw)
+                                            //       ..rotateX(camPitch)
+                                            //       ..rotateY(camRoll);
+                                            // Vector3 worldCam = camTransform
+                                            //     .transform3(camVec);
 
                                             // worldCam.x += (worldCam.x*distCam);
                                             // worldCam.y += (worldCam.y*distCam);
@@ -1063,37 +1064,116 @@ class FieldWidget extends NTWidget {
                                             // worldCam.y += worldCam.y * distCam * sin(robotTheta-pi/2);
 
                                             // rotate/translate into field coordinates using robot pose
-                                            double cosR = cos(
-                                              redAlliance
-                                                  ? robotTheta + pi
-                                                  : robotTheta,
-                                            );
-                                            double sinR = sin(
-                                              redAlliance
-                                                  ? robotTheta + pi
-                                                  : robotTheta,
-                                            );
-                                            worldCam.x *= (cosR * distCam);
-                                            worldCam.y *= (sinR * distCam);
-                                            // worldCam.x *= distCam;
-                                            // worldCam.y *= distCam;
+                                            // double cosR = cos(
+                                            // !redAlliance
+                                            //     ? robotTheta - pi/2
+                                            //     : robotTheta/2,
+                                            // );
+                                            // double sinR = sin(
+                                            // !redAlliance
+                                            //     ? robotTheta - pi/2
+                                            //     : robotTheta/2,
+                                            // );
+                                            // worldCam.x *= (cosR * -distCam);
+                                            // worldCam.y *= (sinR * -distCam);
 
+                                            //json attempt, load from model.visionTopics.allTagsjson.value
+                                            //extract the x and y from the json and convert to double, then use those values instead of the txnc and tync values from the original message
+                                            /*
+                                             "t6t_rs": [
+                                                -0.0850474570455543,
+                                                -1.1990220780899727,
+                                                2.201575532041776,
+                                                -1.580693985956494,
+                                                4.407029426235993,
+                                                -0.2207614345748958
+                                            ],
+                                            */
+
+                                            dynamic jsonData = {};
+                                            String jsonString =
+                                                model
+                                                        .visionTopics
+                                                        .allTagsjson
+                                                        .value
+                                                    is String
+                                                ? model
+                                                          .visionTopics
+                                                          .allTagsjson
+                                                          .value
+                                                      as String
+                                                : (model
+                                                              .visionTopics
+                                                              .allTagsjson
+                                                              .value
+                                                          is List &&
+                                                      model
+                                                          .visionTopics
+                                                          .allTagsjson
+                                                          .value
+                                                          .isNotEmpty)
+                                                ? model
+                                                          .visionTopics
+                                                          .allTagsjson
+                                                          .value[0]
+                                                      as String
+                                                : '{}';
+                                            jsonData =
+                                                jsonDecode(jsonString) ?? {};
+                                            if (jsonData == {} ||
+                                                jsonData['Fiducial'] == null) {
+                                              // logger.error('Invalid JSON data for vision target: ${model.visionTopics.allTagsjson.value}');
+                                              return Offset(robotX, robotY);
+                                            }
+                                            List<double> data =
+                                                jsonData['Fiducial'][i]['t6t_rs']
+                                                    .cast<double>() ??
+                                                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+                                            //t6t_rs means Target Pose in robot space as computed by this fiducial (x,y,z,pitch,yaw,roll) (meters, degrees)
+                                            //Robot Space
+                                            // 3d Cartesian Coordinate System with (0,0,0) located at the center of the robot’s frame projected down to the floor.
+                                            // X+ → Pointing forward (Forward Vector)
+                                            // Y+ → Pointing toward the robot’s right (Right Vector)
+                                            // Z+ → Pointing upward (Up Vector)
+
+                                            double jsonX =
+                                                -data[1]; // Negate data[1] to make forward positive
+                                            double jsonY =
+                                                -data[0]; // Keep data[0] negated for left/right
+
+                                            double cameraDistance =
+                                                model
+                                                        .visionTopics
+                                                        .allTags
+                                                        .value[i * 7 + 4]
+                                                    as double;
+
+                                            // Scale the JSON coordinates to match camera distance while preserving direction
+                                            double jsonMagnitude2D = sqrt(
+                                              jsonX * jsonX + jsonY * jsonY,
+                                            );
+                                            double scaleFactor =
+                                                jsonMagnitude2D > 0
+                                                ? cameraDistance /
+                                                      jsonMagnitude2D
+                                                : 1.0;
+                                            double correctedJsonX =
+                                                jsonX * scaleFactor;
+                                            double correctedJsonY =
+                                                jsonY * scaleFactor;
+
+                                            double cos_ = cos(-robotTheta);
+                                            double sin_ = sin(-robotTheta);
                                             double xField =
                                                 robotX +
-                                                (cosR * worldCam.x -
-                                                    sinR *
-                                                        worldCam.y); //*distCam;
+                                                (correctedJsonX * cos_ +
+                                                    correctedJsonY * sin_);
                                             double yField =
                                                 robotY +
-                                                (sinR * worldCam.x +
-                                                    cosR *
-                                                        worldCam.y); //*distCam;
-
-                                            //logger.debug('Cam: ${model.visionTopics.cameraData.value} = ${Offset(xField, yField)} vrs ${Offset(robotX+((cos(robotTheta-pi/2) * (model.visionTopics.allTags.value[i*7+1] as double)) - (sin(robotTheta-pi/2) * (model.visionTopics.allTags.value[i*7+2] as double))), robotY+((sin(robotTheta-pi/2) * (model.visionTopics.allTags.value[i*7+1] as double)) + (cos(robotTheta-pi/2) * (model.visionTopics.allTags.value[i*7+2] as double))))}');
+                                                (-correctedJsonX * sin_ +
+                                                    correctedJsonY * cos_);
                                             return Offset(xField, yField);
                                           }(),
-                                        // robotX+((cos(robotTheta-pi/2) * (model.visionTopics.allTags.value[i*7+1] as double)) - (sin(robotTheta-pi/2) * (model.visionTopics.allTags.value[i*7+2] as double))),
-                                        // robotY+((sin(robotTheta-pi/2) * (model.visionTopics.allTags.value[i*7+1] as double)) + (cos(robotTheta-pi/2) * (model.visionTopics.allTags.value[i*7+2] as double))),
                                       ],
                                       statuses: [
                                         [
