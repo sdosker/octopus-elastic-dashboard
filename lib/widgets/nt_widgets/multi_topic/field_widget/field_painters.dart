@@ -261,6 +261,7 @@ class VisionPainter extends CustomPainter {
   final Color color;
   final double markerSize;
   final double scale;
+  final bool fallback;
 
   VisionPainter({
     required this.center,
@@ -270,6 +271,7 @@ class VisionPainter extends CustomPainter {
     required this.color,
     required this.markerSize,
     required this.scale,
+    this.fallback = false,
   });
 
   @override
@@ -313,6 +315,13 @@ class VisionPainter extends CustomPainter {
         height: markerSize,
       );
       canvas.drawRect(rect, paint);
+      if (fallback) {
+        final Paint paint2 = Paint()
+        ..color = Colors.redAccent
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2;
+        canvas.drawRect(rect.inflate(2), paint2);
+      }
 
       textPainter.paint(
         canvas,
