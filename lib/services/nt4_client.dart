@@ -102,10 +102,13 @@ class NT4Subscription extends ValueNotifier<Object?> {
         options.structMeta!.schema != null) {
       NTStructSchema schema = options.structMeta!.schema!;
       List<String> path = options.structMeta!.path;
-      NTStruct struct = NTStruct.parse(
-        schema: schema,
-        data: Uint8List.fromList(value),
-      );
+      Uint8List structData;
+      if (value is Uint8List) {
+        structData = value;
+      } else {
+        structData = Uint8List.fromList(value);
+      }
+      NTStruct struct = NTStruct.parse(schema: schema, data: structData);
       Object? fieldValue = struct.get(path);
       // Should only be displaying/subscribing to data types in structs
       if (fieldValue is NTStruct) {
@@ -328,6 +331,8 @@ class NT4Client {
   static const int _pingTimeoutMsV41 = 1000;
 
   String serverBaseAddress;
+  int serverPort;
+
   final VoidCallback? onConnect;
   final VoidCallback? onDisconnect;
   final List<Function(NT4Topic topic)> _topicAnnounceListeners = [];
@@ -336,16 +341,23 @@ class NT4Client {
   final SchemaManager schemaManager;
 
   final Map<int, NT4Subscription> _subscriptions = {};
-  final Set<NT4Subscription> _subscribedTopics = {};
-  int _subscriptionUIDCounter = 0;
-  int _publishUIDCounter = 0;
-  final Map<String, Object?> lastAnnouncedValues = {};
-  final Map<String, int> lastAnnouncedTimestamps = {};
+  final Map<String, Set<NT4Subscription>> _subscriptionsByTopic = {};
+
+  Iterable<NT4Subscription> get _subscribedTopics => _subscriptions.values;
+
   final Map<String, NT4Topic> _clientPublishedTopics = {};
   final Map<int, NT4Topic> announcedTopics = {};
+
+  final Map<String, Object?> lastAnnouncedValues = {};
+  final Map<String, int> lastAnnouncedTimestamps = {};
+
   int _clientId = 0;
+  int _subscriptionUIDCounter = 0;
+  int _publishUIDCounter = 0;
+
   int _serverTimeOffsetUS = 0;
   double _latencyMs = 0;
+  int _lastPongTime = 0;
 
   WebSocketChannel? _mainWebsocket;
   StreamSubscription? _mainWebsocketListener;
@@ -373,15 +385,15 @@ class NT4Client {
   bool _attemptingNTConnection = false;
   bool _attemptingRTTConnection = false;
 
-  int _lastPongTime = 0;
-
   Map<int, NT4Subscription> get subscriptions => _subscriptions;
-  Set<NT4Subscription> get subscribedTopics => _subscribedTopics;
+  Iterable<NT4Subscription> get subscribedTopics => _subscribedTopics;
+
   List<Function(NT4Topic topic)> get topicAnnounceListeners =>
       _topicAnnounceListeners;
 
   NT4Client({
     required this.serverBaseAddress,
+    this.serverPort = 5810,
     required this.schemaManager,
     this.onConnect,
     this.onDisconnect,
@@ -405,6 +417,18 @@ class NT4Client {
     this.serverBaseAddress = serverBaseAddress;
     await _wsOnClose();
     // IP address is changed, so we're "resetting" the attempt state
+    // In the connect method, we don't change the attempting state if
+    // the address changes during connection, so this will have no effect
+    // on existing connections
+    _attemptingNTConnection = false;
+    _attemptingRTTConnection = false;
+    Future.delayed(const Duration(milliseconds: 100), _connect);
+  }
+
+  Future<void> setServerPort(int serverPort) async {
+    this.serverPort = serverPort;
+    await _wsOnClose();
+    // Port is changed, so we're "resetting" the attempt state
     // In the connect method, we don't change the attempting state if
     // the address changes during connection, so this will have no effect
     // on existing connections
@@ -445,7 +469,7 @@ class NT4Client {
   }
 
   void removeTopicUnannounceListener(Function(NT4Topic topic) onUnannounce) {
-    _topicUnannounceListeners.add(onUnannounce);
+    _topicUnannounceListeners.remove(onUnannounce);
   }
 
   NT4Subscription subscribe({
@@ -461,7 +485,7 @@ class NT4Client {
     logger.trace('Creating new subscription: $newSub');
 
     _subscriptions[newSub.uid] = newSub;
-    _subscribedTopics.add(newSub);
+    _indexSubscription(newSub);
     _wsSubscribe(newSub);
 
     if (lastAnnouncedValues.containsKey(topic) &&
@@ -478,7 +502,7 @@ class NT4Client {
   void unSubscribe(NT4Subscription sub) {
     logger.trace('Unsubscribing: $sub');
     _subscriptions.remove(sub.uid);
-    _subscribedTopics.remove(sub);
+    _unindexSubscription(sub);
     _wsUnsubscribe(sub);
 
     // If there are no other subscriptions that are in the same table/tree
@@ -496,13 +520,13 @@ class NT4Client {
             sub.topic.startsWith('${element.name}/') ||
             sub.topic == element.name,
       )) {
-        Future(() => unpublishTopic(topic));
+        Timer.run(() => unpublishTopic(topic));
       }
     }
   }
 
   void clearAllSubscriptions() {
-    for (NT4Subscription sub in _subscriptions.values) {
+    for (NT4Subscription sub in _subscriptions.values.toList()) {
       unSubscribe(sub);
     }
     _subscriptions.clear();
@@ -575,10 +599,8 @@ class NT4Client {
 
     lastAnnouncedValues[topic.name] = data;
     lastAnnouncedTimestamps[topic.name] = timestamp;
-    for (NT4Subscription sub in _subscriptions.values) {
-      if (sub.topic == topic.name) {
-        sub.updateValue(data, timestamp);
-      }
+    for (NT4Subscription sub in _matchingSubscriptions(topic.name)) {
+      sub.updateValue(data, timestamp);
     }
   }
 
@@ -671,6 +693,29 @@ class NT4Client {
     _mainWebsocket?.sink.add(data);
   }
 
+  Iterable<NT4Subscription> _matchingSubscriptions(String topicName) sync* {
+    if (_subscriptionsByTopic.containsKey(topicName)) {
+      yield* _subscriptionsByTopic[topicName]!;
+    }
+  }
+
+  void _indexSubscription(NT4Subscription subscription) => _subscriptionsByTopic
+      .putIfAbsent(subscription.topic, () => {})
+      .add(subscription);
+
+  void _unindexSubscription(NT4Subscription subscription) {
+    final subscriptions = _subscriptionsByTopic[subscription.topic];
+
+    if (subscriptions == null) {
+      return;
+    }
+
+    subscriptions.remove(subscription);
+    if (subscriptions.isEmpty) {
+      _subscriptionsByTopic.remove(subscription.topic);
+    }
+  }
+
   Future<void> _connect() async {
     if (_mainWebsocket != null ||
         !_attemptConnection ||
@@ -687,7 +732,7 @@ class NT4Client {
 
     _clientId = Random().nextInt(99999999);
 
-    String mainServerAddr = 'ws://$serverBaseAddress:5810/nt/Elastic';
+    String mainServerAddr = 'ws://$serverBaseAddress:$serverPort/nt/Elastic';
 
     WebSocketChannel connectionAttempt;
     try {
@@ -706,7 +751,8 @@ class NT4Client {
       // When changing IP addresses we ignore any current connection attempts
       // since the handshake can take a long time, this will avoid logging information
       // that is from an old connection attempt
-      if (mainServerAddr.contains(serverBaseAddress)) {
+      if (mainServerAddr.contains(serverBaseAddress) &&
+          mainServerAddr.contains(serverPort.toString())) {
         logger.info(
           'Failed to connect to network tables, attempting to reconnect in 500 ms',
         );
@@ -719,8 +765,11 @@ class NT4Client {
       logger.trace('Connection failed with error', e);
       return;
     }
-    if (!mainServerAddr.contains(serverBaseAddress)) {
-      logger.info('IP Address changed while connecting, aborting connection');
+    if (!mainServerAddr.contains(serverBaseAddress) ||
+        !mainServerAddr.contains(serverPort.toString())) {
+      logger.info(
+        'IP Address/Port changed while connecting, aborting connection',
+      );
 
       // We don't set attempting connection to false here since we're assuming
       // that when the address changes, it will "reset" the attempt state to
@@ -802,7 +851,7 @@ class NT4Client {
     }
     _attemptingRTTConnection = true;
 
-    String rttServerAddr = 'ws://$serverBaseAddress:5810/nt/Elastic';
+    String rttServerAddr = 'ws://$serverBaseAddress:$serverPort/nt/Elastic';
 
     Uri? rttUri = Uri.tryParse(rttServerAddr);
 
@@ -824,14 +873,16 @@ class NT4Client {
         'Failed to connect to RTT Network Tables protocol, attempting to reconnect in 500 ms',
       );
       // Only reset connection attempt if the address hasn't changed, see explanation above
-      if (rttServerAddr.contains(serverBaseAddress)) {
+      if (rttServerAddr.contains(serverBaseAddress) &&
+          rttServerAddr.contains(serverPort.toString())) {
         _attemptingRTTConnection = false;
       }
       return;
     }
-    if (!rttServerAddr.contains(serverBaseAddress)) {
+    if (!rttServerAddr.contains(serverBaseAddress) ||
+        !rttServerAddr.contains(serverPort.toString())) {
       logger.info(
-        'IP Addressed changed while connecting to RTT, aborting RTT connection',
+        'IP Addressed/Port changed while connecting to RTT, aborting RTT connection',
       );
       connectionAttempt.sink.close().ignore();
       return;
@@ -1061,10 +1112,8 @@ class NT4Client {
             NT4Topic topic = announcedTopics[topicID]!;
             lastAnnouncedValues[topic.name] = value;
             lastAnnouncedTimestamps[topic.name] = timestampUS;
-            for (NT4Subscription sub in _subscriptions.values) {
-              if (sub.topic == topic.name) {
-                sub.updateValue(value, timestampUS);
-              }
+            for (NT4Subscription sub in _matchingSubscriptions(topic.name)) {
+              sub.updateValue(value, timestampUS);
             }
 
             // If it's a schema topic, try to process the new schema
